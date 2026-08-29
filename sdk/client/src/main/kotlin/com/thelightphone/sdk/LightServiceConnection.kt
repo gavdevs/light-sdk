@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.thelightphone.sdk.shared.LightConstants
+import com.thelightphone.sdk.shared.LightRemoteMethod
 import com.thelightphone.sdk.shared.LightResult
 import com.thelightphone.sdk.shared.LightServiceMethod
 import com.thelightphone.sdk.shared.LightServiceMethod.RequestPermissionComponent.PERMISSION_NAME_KEY
@@ -35,6 +36,7 @@ internal object LightServiceConnection : ServiceConnection {
     private var bound = false
     private var binderReady = CompletableDeferred<IBinder>()
     private var token: String = DEFAULT_TOKEN
+    private val tokenLock = Any()
     // Retained so we can rebind ourselves if the binding dies. applicationContext, so no leak.
     private var appContext: Context? = null
     private var serverPackage: String? = null
@@ -134,9 +136,9 @@ internal object LightServiceConnection : ServiceConnection {
 
     suspend fun awaitBinder(): IBinder = binderReady.await()
 
-    fun ensureToken(): Boolean {
-        if (token != DEFAULT_TOKEN) return true
-        return when (val result = request(
+    fun ensureToken(): Boolean = synchronized(tokenLock) {
+        if (token != DEFAULT_TOKEN) return@synchronized true
+        when (val result = request(
             LightServiceMethod.GetToken.id,
             LightServiceMethod.GetToken.encodeRequest(Unit)
         )) {
@@ -155,7 +157,7 @@ internal object LightServiceConnection : ServiceConnection {
 }
 
 suspend fun <TRequest, TResponse> callRemoteServiceMethod(
-    method: LightServiceMethod<TRequest, TResponse>,
+    method: LightRemoteMethod<TRequest, TResponse>,
     body: TRequest,
     timeout: Duration = 5.seconds
 ): LightResult<TResponse> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {

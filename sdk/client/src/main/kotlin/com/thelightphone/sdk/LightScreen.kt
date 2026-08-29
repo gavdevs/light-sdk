@@ -1,5 +1,7 @@
 package com.thelightphone.sdk
 
+import android.content.ComponentName
+import android.content.Intent
 import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
@@ -40,6 +42,20 @@ abstract class SimpleLightScreen<ResultType>(sealedActivity: SealedLightActivity
     fun <T> navigateTo(screenFactory: (SealedLightActivity) -> SimpleLightScreen<T>, resultCallback: ((T) -> Unit)? = null) {
         val screen = screenFactory(SealedLightActivity(activity))
         activity.navigateTo(screen, resultCallback)
+    }
+
+    /** Starts an activity belonging to this tool's configured SDK server. */
+    fun startServerActivity(flattenedComponentName: String): Boolean {
+        val component = ComponentName.unflattenFromString(flattenedComponentName) ?: return false
+        val serverPackage = runCatching {
+            (activity.application as LightSdkApplication).readServerPackage()
+        }.getOrNull() ?: return false
+        if (component.packageName != serverPackage) return false
+
+        return runCatching {
+            activity.startActivity(Intent().setComponent(component))
+            true
+        }.getOrDefault(false)
     }
 
     open fun goBack(result: ResultType? = null) {

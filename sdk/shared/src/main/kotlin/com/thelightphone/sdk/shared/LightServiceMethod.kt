@@ -11,11 +11,8 @@ val lightJson = Json {
     explicitNulls = false
 }
 
-/**
- * Defines a typed method that a client can call on the server's bound service.
- */
-sealed interface LightServiceMethod<TRequest, TResponse> {
-
+/** A typed method that a client can call on a bound SDK server. */
+interface LightRemoteMethod<TRequest, TResponse> {
     val id: String
     val requestSerializer: KSerializer<TRequest>
     val responseSerializer: KSerializer<TResponse>
@@ -31,6 +28,12 @@ sealed interface LightServiceMethod<TRequest, TResponse> {
 
     fun decodeResponse(json: String): TResponse =
         lightJson.decodeFromString(responseSerializer, json)
+}
+
+/**
+ * Defines a typed method provided by the Light SDK's shared contract.
+ */
+sealed interface LightServiceMethod<TRequest, TResponse> : LightRemoteMethod<TRequest, TResponse> {
 
     /**
      * Define all service methods below. DO NOT CHANGE EXISTING METHODS
