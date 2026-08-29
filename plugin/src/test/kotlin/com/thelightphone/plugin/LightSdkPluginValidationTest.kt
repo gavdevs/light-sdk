@@ -360,6 +360,19 @@ class LightSdkPluginValidationTest {
         )
     }
 
+    @Test
+    fun `published SDK modules are allowed for composite consumers`() {
+        val plugin = LightSdkPlugin()
+        LightSdkPlugin.SDK_MODULES.forEach { module ->
+            assertTrue(plugin.isAllowed("com.thelightphone", module))
+        }
+    }
+
+    @Test
+    fun `lookalike SDK module is not allowed`() {
+        assertFalse(LightSdkPlugin().isAllowed("com.thelightphone", "client-untrusted"))
+    }
+
     // ---------------------------------------------------------------------
     // INTERNAL_CONFIG_PREFIXES no longer skips ksp
     // ---------------------------------------------------------------------

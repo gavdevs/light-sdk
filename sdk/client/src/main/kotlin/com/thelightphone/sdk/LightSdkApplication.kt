@@ -31,12 +31,14 @@ open class LightSdkApplication : Application() {
         super.onCreate()
         val serverPackage = readServerPackage()
         invokeEntryPoint()
-        registerWithLightServer(serverPackage)
+        if (shouldRegisterPush(packageName, serverPackage)) {
+            registerWithLightServer(serverPackage)
+        }
         LightServiceConnection.bind(this, serverPackage)
     }
 
     @Suppress("DEPRECATION")
-    private fun readServerPackage(): String {
+    internal fun readServerPackage(): String {
         val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
         return requireNotNull(appInfo.metaData?.getString("com.thelightphone.sdk.LIGHT_SERVER_PACKAGE")) {
             "LIGHT_SERVER_PACKAGE not found in manifest — set tool.serverPackage in lighttool.toml"
@@ -79,3 +81,6 @@ open class LightSdkApplication : Application() {
         }
     }
 }
+
+internal fun shouldRegisterPush(toolPackage: String, serverPackage: String): Boolean =
+    toolPackage != serverPackage

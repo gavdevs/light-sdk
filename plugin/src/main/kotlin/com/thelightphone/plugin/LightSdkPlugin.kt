@@ -14,7 +14,9 @@ class LightSdkPlugin : Plugin<Project> {
     companion object {
         val SDK_MODULES = setOf("client", "shared", "ui", "server", "emulator")
 
-        val ALLOWED_DEPENDENCIES = setOf(
+        val SDK_DEPENDENCIES = SDK_MODULES.mapTo(mutableSetOf()) { "com.thelightphone:$it" }
+
+        private val PREFIX_ALLOWED_DEPENDENCIES = setOf(
             "org.jetbrains.kotlin:kotlin-stdlib",
             "org.jetbrains.kotlin:kotlin-test",
             "androidx.compose",
@@ -43,6 +45,8 @@ class LightSdkPlugin : Plugin<Project> {
             "org.sol4k:tweetnacl",
             "org.sol4k:utilities",
         )
+
+        val ALLOWED_DEPENDENCIES = PREFIX_ALLOWED_DEPENDENCIES + SDK_DEPENDENCIES
 
         val ALLOWED_PLUGINS = setOf(
             "com.android.application",
@@ -395,9 +399,10 @@ class LightSdkPlugin : Plugin<Project> {
      */
     private fun isKspConfig(name: String): Boolean = name.startsWith("ksp")
 
-    private fun isAllowed(group: String, name: String): Boolean {
+    internal fun isAllowed(group: String, name: String): Boolean {
         val coordinate = "$group:$name"
-        return ALLOWED_DEPENDENCIES.any { coordinate.startsWith(it) }
+        return coordinate in SDK_DEPENDENCIES ||
+            PREFIX_ALLOWED_DEPENDENCIES.any { coordinate.startsWith(it) }
     }
 
     private fun isAllowedKspProcessor(group: String, name: String): Boolean {
