@@ -230,6 +230,10 @@ object LightIcons {
         name = "fast-forward",
         drawableResource = R.drawable.ic_fast_forward_white,
     )
+    object HOME : LightIconConfiguration(
+        name = "home",
+        drawableResource = R.drawable.ic_home_white,
+    )
     object LIST : LightIconConfiguration(
         name = "list",
         drawableResource = R.drawable.ic_list_white,
