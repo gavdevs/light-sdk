@@ -5,7 +5,8 @@ package com.thelightphone.plugin
  *
  * The skeleton mirrors what every Light SDK tool needs (LightSdkApplication +
  * LightActivity + LightSdkReceiver + SDK-marker query). The only variation
- * across tools is the label and the set of `<uses-permission>` entries.
+ * across tools is the label, optional launcher icon, and the set of
+ * `<uses-permission>` entries.
  *
  * All user-controlled strings have already been validated, but we XML-escape
  * them anyway so a future loosening of the validators can't open a manifest
@@ -38,6 +39,9 @@ object ManifestGenerator {
         val screenOrientation = metadata.orientation?.let {
             "\n            |            android:screenOrientation=\"${xmlAttr(it)}\""
         }.orEmpty()
+        val iconAttr = metadata.icon?.let {
+            "\n            |            android:icon=\"${xmlAttr(it)}\""
+        }.orEmpty()
         val capabilityMarkers = marginBlock(
             metadata.capabilities.flatMap { capability ->
                 listOf(
@@ -65,7 +69,7 @@ object ManifestGenerator {
             """
             |    <application
             |        android:name="com.thelightphone.sdk.LightSdkApplication"
-            |        android:label="${xmlAttr(metadata.label)}"
+            |        android:label="${xmlAttr(metadata.label)}"$iconAttr
             |        android:supportsRtl="true"
             |        android:theme="@style/LightSdk.Theme.Splash">
             |        <meta-data
