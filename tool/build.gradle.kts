@@ -59,6 +59,10 @@ kotlin {
 
 dependencies {
     implementation(project(":sdk:client"))
-    testImplementation(libs.kotlin.test)
+    implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation("androidx.media3:media3-exoplayer-hls:1.10.1")
     ksp(libs.androidx.room.compiler)
+    testImplementation(libs.kotlin.test)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
