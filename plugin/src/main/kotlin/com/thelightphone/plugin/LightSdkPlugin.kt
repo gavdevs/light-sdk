@@ -16,6 +16,11 @@ class LightSdkPlugin : Plugin<Project> {
 
         val SDK_DEPENDENCIES = SDK_MODULES.mapTo(mutableSetOf()) { "com.thelightphone:$it" }
 
+        val EXACT_ALLOWED_DEPENDENCIES = setOf(
+            "com.auroraoss:gplayapi:3.6.4",
+            "com.google.protobuf:protobuf-java:4.34.1",
+        )
+
         private val PREFIX_ALLOWED_DEPENDENCIES = setOf(
             "org.jetbrains.kotlin:kotlin-stdlib",
             "org.jetbrains.kotlin:kotlin-test",
@@ -46,7 +51,8 @@ class LightSdkPlugin : Plugin<Project> {
             "org.sol4k:utilities",
         )
 
-        val ALLOWED_DEPENDENCIES = PREFIX_ALLOWED_DEPENDENCIES + SDK_DEPENDENCIES
+        val ALLOWED_DEPENDENCIES =
+            PREFIX_ALLOWED_DEPENDENCIES + SDK_DEPENDENCIES + EXACT_ALLOWED_DEPENDENCIES
 
         val ALLOWED_PLUGINS = setOf(
             "com.android.application",
@@ -399,9 +405,10 @@ class LightSdkPlugin : Plugin<Project> {
      */
     private fun isKspConfig(name: String): Boolean = name.startsWith("ksp")
 
-    internal fun isAllowed(group: String, name: String): Boolean {
+    internal fun isAllowed(group: String, name: String, version: String? = null): Boolean {
         val coordinate = "$group:$name"
         return coordinate in SDK_DEPENDENCIES ||
+            "$coordinate:$version" in EXACT_ALLOWED_DEPENDENCIES ||
             PREFIX_ALLOWED_DEPENDENCIES.any { coordinate.startsWith(it) }
     }
 
@@ -453,7 +460,7 @@ class LightSdkPlugin : Plugin<Project> {
                             violations.add("  ${config.name}: ${group}:${dep.name}:${dep.version ?: "?"} (KSP processor not allowed)")
                         }
                     } else {
-                        if (!isAllowed(group, dep.name)) {
+                        if (!isAllowed(group, dep.name, dep.version)) {
                             violations.add("  ${config.name}: ${group}:${dep.name}:${dep.version ?: "?"}")
                         }
                     }
@@ -484,8 +491,9 @@ class LightSdkPlugin : Plugin<Project> {
                 }
 
                 val isKsp = isKspConfig(config.name)
-                val allowPredicate: (String, String) -> Boolean =
-                    if (isKsp) ::isAllowedKspProcessor else ::isAllowed
+                val allowPredicate: (String, String, String?) -> Boolean =
+                    if (isKsp) { group, name, _ -> isAllowedKspProcessor(group, name) }
+                    else ::isAllowed
 
                 // Collect coordinates that are transitives of allowed first-level deps.
                 // Only trust transitives of allowed module deps — not project deps,
@@ -502,7 +510,7 @@ class LightSdkPlugin : Plugin<Project> {
 
                 resolved.forEach { dep ->
                     if (isProjectDependency(dep, project)) return@forEach
-                    if (allowPredicate(dep.moduleGroup, dep.moduleName)) {
+                    if (allowPredicate(dep.moduleGroup, dep.moduleName, dep.moduleVersion)) {
                         collectTransitives(dep)
                     }
                 }
@@ -513,7 +521,7 @@ class LightSdkPlugin : Plugin<Project> {
                     val resolvedCoord = "${dep.moduleGroup}:${dep.moduleName}"
 
                     if (resolvedCoord in allowedTransitives) return@forEach
-                    if (allowPredicate(dep.moduleGroup, dep.moduleName)) return@forEach
+                    if (allowPredicate(dep.moduleGroup, dep.moduleName, dep.moduleVersion)) return@forEach
 
                     val tag = if (isKsp) "unexpected resolved KSP dependency" else "unexpected resolved dependency — possible substitution"
                     violations.add("  ${config.name}: $resolvedCoord:${dep.moduleVersion} ($tag)")

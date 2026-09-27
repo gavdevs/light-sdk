@@ -373,6 +373,28 @@ class LightSdkPluginValidationTest {
         assertFalse(LightSdkPlugin().isAllowed("com.thelightphone", "client-untrusted"))
     }
 
+    @Test
+    fun `gplayapi is allowed by exact coordinate`() {
+        assertTrue(LightSdkPlugin().isAllowed("com.auroraoss", "gplayapi", "3.6.4"))
+    }
+
+    @Test
+    fun `gplayapi lookalike is not allowed`() {
+        assertFalse(LightSdkPlugin().isAllowed("com.auroraoss", "gplayapi-untrusted", "3.6.4"))
+    }
+
+    @Test
+    fun `other gplayapi versions are not allowed`() {
+        assertFalse(LightSdkPlugin().isAllowed("com.auroraoss", "gplayapi", "3.6.5"))
+    }
+
+    @Test
+    fun `protobuf runtime required by gplayapi is exactly pinned`() {
+        assertTrue(LightSdkPlugin().isAllowed("com.google.protobuf", "protobuf-java", "4.34.1"))
+        assertFalse(LightSdkPlugin().isAllowed("com.google.protobuf", "protobuf-java", "4.34.2"))
+        assertFalse(LightSdkPlugin().isAllowed("com.google.protobuf", "protobuf-javalite", "4.34.1"))
+    }
+
     // ---------------------------------------------------------------------
     // INTERNAL_CONFIG_PREFIXES no longer skips ksp
     // ---------------------------------------------------------------------
