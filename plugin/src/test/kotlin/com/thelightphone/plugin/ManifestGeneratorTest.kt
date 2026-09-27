@@ -132,6 +132,38 @@ class ManifestGeneratorTest {
     }
 
     @Test
+    fun `package install capability generates installer permissions`() {
+        val xml = render(capabilities = listOf("package-install-request"))
+
+        assertTrue(xml.contains("""<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />"""))
+        assertTrue(xml.contains("""<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />"""))
+        assertTrue(xml.contains("""<uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />"""))
+    }
+
+    @Test
+    fun `package install capability emits marker and non-exported receiver`() {
+        val xml = render(capabilities = listOf("package-install-request"))
+
+        assertTrue(xml.contains("""android:name="com.thelightphone.sdk.CAPABILITY_PACKAGE_INSTALL_REQUEST""""))
+        assertTrue(xml.contains("""android:name="com.thelightphone.sdk.install.LightPackageInstallReceiver""""))
+        assertTrue(
+            Regex(
+                """<receiver\s+android:name="com\.thelightphone\.sdk\.install\.LightPackageInstallReceiver"\s+android:exported="false"\s*/>"""
+            ).containsMatchIn(xml),
+            "expected a non-exported install receiver; got:\n$xml",
+        )
+    }
+
+    @Test
+    fun `package install components are omitted without capability`() {
+        val xml = render()
+
+        assertFalse(xml.contains("android.permission.REQUEST_INSTALL_PACKAGES"))
+        assertFalse(xml.contains("CAPABILITY_PACKAGE_INSTALL_REQUEST"))
+        assertFalse(xml.contains("LightPackageInstallReceiver"))
+    }
+
+    @Test
     fun `server package is emitted as meta-data in application element`() {
         val xml = render(serverPackage = "com.lightos")
         assertTrue(

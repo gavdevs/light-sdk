@@ -200,8 +200,12 @@ object LightToolPolicy {
     )
 
     const val DETACHED_AUDIO: String = "detached-audio"
+    const val PACKAGE_INSTALL_REQUEST: String = "package-install-request"
 
-    val ALLOWED_CAPABILITIES: Set<String> = setOf(DETACHED_AUDIO)
+    val ALLOWED_CAPABILITIES: Set<String> = setOf(
+        DETACHED_AUDIO,
+        PACKAGE_INSTALL_REQUEST,
+    )
 
     /**
      * Permissions a capability contributes to the generated manifest. These are
@@ -213,6 +217,11 @@ object LightToolPolicy {
         DETACHED_AUDIO to listOf(
             "android.permission.FOREGROUND_SERVICE",
             "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        ),
+        PACKAGE_INSTALL_REQUEST to listOf(
+            "android.permission.REQUEST_INSTALL_PACKAGES",
+            "android.permission.QUERY_ALL_PACKAGES",
+            "android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION",
         ),
     )
 

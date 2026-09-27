@@ -28,6 +28,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.thelightphone.lp3Keyboard.ui.LightDeviceKeys
+import com.thelightphone.sdk.install.LightPackageInstaller
 import com.thelightphone.sdk.shared.LightServiceMethod
 import com.thelightphone.sdk.ui.LightModalManager
 import com.thelightphone.sdk.ui.LocalHapticsEnabled
@@ -231,6 +232,7 @@ class SealedLightContext(internal val androidContext: Context) {
     val filesDir: File by lazy{ androidContext.filesDir }
     val fileShare: LightFileShare by lazy { LightFileShare(androidContext) }
     val connectivity: LightConnectivity by lazy { LightConnectivity(androidContext) }
+    val packageInstaller: LightPackageInstaller by lazy { LightPackageInstaller(androidContext) }
     fun readAsset(path: String): ByteArray = androidContext.assets.open(path).use { it.readBytes() }
 }
 /**

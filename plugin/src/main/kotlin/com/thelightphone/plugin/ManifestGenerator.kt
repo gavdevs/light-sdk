@@ -65,6 +65,13 @@ object ManifestGenerator {
                 """        </service>""",
             )
         )
+        val packageInstallReceiver = marginBlock(
+            if (LightToolPolicy.PACKAGE_INSTALL_REQUEST !in metadata.capabilities) emptyList() else listOf(
+                """        <receiver""",
+                """            android:name="com.thelightphone.sdk.install.LightPackageInstallReceiver"""",
+                """            android:exported="false" />""",
+            )
+        )
         appendLine(
             """
             |    <application
@@ -95,7 +102,7 @@ object ManifestGenerator {
             |            <meta-data
             |                android:name="com.thelightphone.sdk.SDK_VERSION"
             |                android:value="${'$'}{sdkVersion}" />
-            |        </receiver>$detachedAudioService
+            |        </receiver>$detachedAudioService$packageInstallReceiver
             |    </application>
             |    <queries>
             |        <intent>

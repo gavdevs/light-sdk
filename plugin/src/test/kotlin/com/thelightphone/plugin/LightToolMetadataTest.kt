@@ -140,6 +140,40 @@ class LightToolMetadataTest {
     }
 
     @Test
+    fun `package install capability is accepted`(@TempDir dir: Path) {
+        val file = writeToml(dir, """
+            [tool]
+            id = "com.example.installer"
+            label = "Installer"
+            versionCode = 1
+            versionName = "1.0.0"
+            serverPackage = "com.lightos"
+            capabilities = ["package-install-request"]
+        """.trimIndent())
+
+        assertEquals(
+            listOf("package-install-request"),
+            LightToolMetadata.parse(file).capabilities,
+        )
+    }
+
+    @Test
+    fun `package install permissions must come from capability`(@TempDir dir: Path) {
+        val file = writeToml(dir, """
+            [tool]
+            id = "com.example.installer"
+            label = "Installer"
+            versionCode = 1
+            versionName = "1.0.0"
+            serverPackage = "com.lightos"
+            permissions = ["android.permission.REQUEST_INSTALL_PACKAGES"]
+        """.trimIndent())
+
+        val ex = assertThrows<LightToolMetadataException> { LightToolMetadata.parse(file) }
+        assert(ex.message!!.contains("package-install-request")) { ex.message ?: "" }
+    }
+
+    @Test
     fun `missing file fails`(@TempDir dir: Path) {
         val file = dir.resolve("lighttool.toml").toFile()
         val ex = assertThrows<LightToolMetadataException> { LightToolMetadata.parse(file) }
