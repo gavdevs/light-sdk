@@ -27,14 +27,19 @@ class LightSdkPlugin : Plugin<Project> {
         }
 
         fun isAllowedCoordinate(group: String, name: String): Boolean =
-            ALLOWED_DEPENDENCIES.any { entry ->
-                if (':' in entry) {
-                    val coordinate = "$group:$name"
-                    coordinate == entry || coordinate.startsWith("$entry-")
-                } else {
-                    group == entry || group.startsWith("$entry.")
+            // Published SDK artifacts stay valid for composite consumers that
+            // substitute com.thelightphone:* with the adjacent build. The
+            // shared builder allowlist governs what a submitted tool may
+            // declare, so it does not carry these.
+            name in SDK_MODULES && group == "com.thelightphone" ||
+                ALLOWED_DEPENDENCIES.any { entry ->
+                    if (':' in entry) {
+                        val coordinate = "$group:$name"
+                        coordinate == entry || coordinate.startsWith("$entry-")
+                    } else {
+                        group == entry || group.startsWith("$entry.")
+                    }
                 }
-            }
 
         fun isAllowedKspProcessor(group: String, name: String): Boolean =
             "$group:$name" in ALLOWED_KSP_PROCESSORS

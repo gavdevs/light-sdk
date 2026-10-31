@@ -396,6 +396,19 @@ class LightSdkPluginValidationTest {
     }
 
     @Test
+    fun `published SDK artifacts are allowed for composite consumers`() {
+        LightSdkPlugin.SDK_MODULES.forEach { module ->
+            assertTrue(LightSdkPlugin.isAllowedCoordinate("com.thelightphone", module))
+        }
+    }
+
+    @Test
+    fun `lookalike SDK artifact is not allowed`() {
+        assertFalse(LightSdkPlugin.isAllowedCoordinate("com.thelightphone", "client-untrusted"))
+        assertFalse(LightSdkPlugin.isAllowedCoordinate("com.example", "client"))
+    }
+
+    @Test
     fun `artifact entries match the artifact and dash-suffixed variants only`() {
         assertTrue(LightSdkPlugin.isAllowedCoordinate("org.jetbrains.kotlinx", "kotlinx-coroutines-core"))
         assertTrue(LightSdkPlugin.isAllowedCoordinate("com.squareup.okhttp3", "okhttp"))
