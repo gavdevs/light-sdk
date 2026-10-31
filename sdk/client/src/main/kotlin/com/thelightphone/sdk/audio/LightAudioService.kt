@@ -2,11 +2,14 @@ package com.thelightphone.sdk.audio
 
 import android.app.Application
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -31,13 +34,20 @@ internal class LightAudioService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     private lateinit var session: MediaSession
     private lateinit var usage: LightAudioUsage
+    private var queuePlayer: ResolvingSessionPlayer? = null
+    private lateinit var resolutionWakeLock: PowerManager.WakeLock
     private val idleHandler = Handler(Looper.getMainLooper())
     private val idleStop = Runnable { stopSelf() }
+    private var destroying = false
 
     override fun onCreate() {
         super.onCreate()
 
         assertSharedProcess()
+
+        resolutionWakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:stream-resolution")
+            .apply { setReferenceCounted(false) }
 
         // Whatever the starting handle staged. Empty if the system revived the service.
         val spec = detachedSessionState.stagedSpec()
@@ -50,8 +60,21 @@ internal class LightAudioService : MediaSessionService() {
             })
         }
         detachedSessionState.adoptSpec(spec)
+        val resolver = LightAudioQueueSessions.resolver
+        if (resolver != null) {
+            // Streaming queues hold the network across tracks; simple detached
+            // playback keeps its existing lighter radio behavior.
+            player.setWakeMode(C.WAKE_MODE_NETWORK)
+            player.setHandleAudioBecomingNoisy(true)
+        }
+        val sessionPlayer = resolver?.let {
+            ResolvingSessionPlayer(player, it, ::refreshIdleStop).also { session ->
+                queuePlayer = session
+                LightAudioQueueSessions.attach(session)
+            }
+        } ?: player
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val sessionBuilder = MediaSession.Builder(this, player)
+        val sessionBuilder = MediaSession.Builder(this, sessionPlayer)
             .setId(packageName)
             .setCallback(SessionCallback())
         if (launchIntent != null) {
@@ -67,6 +90,11 @@ internal class LightAudioService : MediaSessionService() {
         session = sessionBuilder.build()
         // Set after build(): builder extras never reach the platform session LightOS reads.
         session.setSessionExtras(usageExtras(usage))
+        sessionPlayer.addListener(object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) {
+                refreshIdleStop()
+            }
+        })
         detachedSessionState.setHandleChangedListener {
             idleHandler.post(::refreshIdleStop)
         }
@@ -86,11 +114,13 @@ internal class LightAudioService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        destroying = true
         idleHandler.removeCallbacks(idleStop)
         detachedSessionState.setHandleChangedListener(null)
         detachedSessionState.clearSession()
+        if (resolutionWakeLock.isHeld) resolutionWakeLock.release()
         session.release()
-        player.release()
+        session.player.release()
         super.onDestroy()
     }
 
@@ -103,6 +133,9 @@ internal class LightAudioService : MediaSessionService() {
             // here, but only our LightAudioPlayer controller requests a usage.
             if (controller.connectionHints.isToolController()) {
                 val requestedUsage = controller.connectionHints.requestedUsage()
+                if (queuePlayer != null && requestedUsage != LightAudioUsage.Music) {
+                    return MediaSession.ConnectionResult.reject()
+                }
                 // newPlayer checks this synchronously. Repeat it here because the
                 // service state may change before the async controller connects.
                 val requestedSpec = detachedSessionState.stagedSpec().copy(usage = requestedUsage)
@@ -149,8 +182,19 @@ internal class LightAudioService : MediaSessionService() {
     }
 
     private fun refreshIdleStop() {
+        if (destroying || !::session.isInitialized) return
+        val resolving = queuePlayer?.queue?.snapshot?.isLoading == true
+        if (resolving && !resolutionWakeLock.isHeld) resolutionWakeLock.acquire()
+        if (!resolving && resolutionWakeLock.isHeld) resolutionWakeLock.release()
         idleHandler.removeCallbacks(idleStop)
-        if (shouldStartIdleStop(player.isPlaying, detachedSessionState.isHandleOpen())) {
+        val sessionPlayer = session.player
+        if (shouldStartIdleStop(
+                sessionPlayer.isPlaying,
+                detachedSessionState.isHandleOpen(),
+                sessionPlayer.playbackState == Player.STATE_BUFFERING,
+                sessionPlayer.playWhenReady,
+            )
+        ) {
             idleHandler.postDelayed(idleStop, IDLE_STOP_MS)
         }
     }
@@ -187,8 +231,12 @@ internal class LightAudioService : MediaSessionService() {
  * media-button controllers, and the LightOS now-playing surface,
  * none of which own the session.
  */
-internal fun shouldStartIdleStop(isPlaying: Boolean, handleOpen: Boolean): Boolean =
-    !isPlaying && !handleOpen
+internal fun shouldStartIdleStop(
+    isPlaying: Boolean,
+    handleOpen: Boolean,
+    isBuffering: Boolean = false,
+    playWhenReady: Boolean = false,
+): Boolean = !handleOpen && !isPlaying && !(isBuffering && playWhenReady)
 
 internal const val IDLE_STOP_MS = 15 * 60_000L
 

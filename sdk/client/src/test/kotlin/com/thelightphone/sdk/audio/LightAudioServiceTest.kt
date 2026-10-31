@@ -14,6 +14,12 @@ class LightAudioServiceTest {
         assertFalse(shouldStartIdleStop(isPlaying = true, handleOpen = false))
         assertFalse(shouldStartIdleStop(isPlaying = true, handleOpen = true))
     }
+
+    @Test
+    fun detachedResolutionSurvivesWithoutAController() {
+        assertFalse(shouldStartIdleStop(false, false, isBuffering = true, playWhenReady = true))
+        assertTrue(shouldStartIdleStop(false, false, isBuffering = true, playWhenReady = false))
+    }
 }
 
 class DetachedSessionStateTest {

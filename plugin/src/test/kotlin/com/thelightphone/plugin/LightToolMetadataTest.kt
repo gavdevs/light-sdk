@@ -118,6 +118,21 @@ class LightToolMetadataTest {
     }
 
     @Test
+    fun `shared wake permission stays valid with detached audio`(@TempDir dir: Path) {
+        val file = writeToml(dir, """
+            [tool]
+            id = "com.example.mytool"
+            label = "Audio"
+            versionCode = 1
+            versionName = "1.0.0"
+            serverPackage = "com.lightos"
+            permissions = ["android.permission.WAKE_LOCK"]
+            capabilities = ["detached-audio"]
+        """.trimIndent())
+        assertEquals(listOf("android.permission.WAKE_LOCK"), LightToolMetadata.parse(file).permissions)
+    }
+
+    @Test
     fun `explicit capability-generated permission fails naming the capability`(@TempDir dir: Path) {
         // The capability is the single source of truth for these permissions,
         // so hand-writing one is rejected even alongside the capability itself.

@@ -120,6 +120,18 @@ The controller identifies itself as a tool controller and sends its `LightAudioU
 
 `LightPlayerSpec` is staged on `DetachedSessionState` before the controller starts the service. Reconnecting must match the live session spec.
 
+## Service-owned source resolution
+
+`LightAudioQueueSessions` supports unrestricted integrations that cannot resolve a full queue into long-lived URLs. The application registers a `LightAudioQueueResolver` during bootstrap. The service creates a main-thread-confined `ResolvingAudioQueue` and owns its coroutine scope.
+
+`ResolvingSessionPlayer` presents the logical queue through Media3's `SimpleBasePlayer`. It loads only the current resolved source into the service's ExoPlayer. System transport commands act on the logical queue, not that single decoder item. Signed source URLs stay outside public queue snapshots and media-session metadata.
+
+Resolution and continuation jobs survive screen destruction and controller release. Queue replacement, explicit stop, and service destruction invalidate pending results. Source selection preserves a pause that arrives during resolution. Terminal failures stop playback rather than silently skipping tracks.
+
+The streaming facade uses a temporary detached controller for commands. Binding alone does not make an Android service started. Active commands therefore call `startForegroundService` before releasing that controller. The session reports buffering with logical metadata while resolution is pending, so Media3 can publish the required foreground notification immediately.
+
+The service holds a partial wake lock during resolution. ExoPlayer manages network playback wake locks after source installation. Service destruction releases both paths. A paused resolution can still complete, but it cannot resume audio without a new play request.
+
 ## Foreground-service notification on LP3
 
 Android requires a media-playback foreground service to publish a notification.
@@ -136,7 +148,7 @@ platform `MediaSession` separately and renders its own controls.
 Playing detached audio keeps the service alive after the tool releases its handle.
 A paused service must not retain its player and process forever, so the service starts a 15-minute timer when both conditions hold:
 
-1. playback is not playing
+1. playback is neither playing nor buffering with play intent
 2. no tool holds the detached handle.
 
 Playback resuming or a handle opening cancels the timer. When it fires, the service stops itself and releases the session and player.
@@ -179,8 +191,7 @@ Tools opt into detached playback through `lighttool.toml`:
 capabilities = ["detached-audio"]
 ```
 
-The Light SDK Gradle plugin translates this capability into the `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK` manifest
-permissions, the capability marker, and the `<service>` declaration.
+The Light SDK Gradle plugin generates `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, and `WAKE_LOCK` permissions, the capability marker, and the service declaration. `WAKE_LOCK` also remains a valid explicit permission for other tool functions.
 
 The SDK factory rejects detached construction without the capability and reports the required entry.
 Attached playback needs no additional opt-in.

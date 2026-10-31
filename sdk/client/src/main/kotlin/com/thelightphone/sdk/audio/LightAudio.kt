@@ -53,18 +53,7 @@ value class DefaultLightAudio(
             return LightAudioPlayer(sealedActivity.activity, spec)
         }
 
-        sealedActivity.activity.requireDetachedAudioCapability()
-        admitDetachedPlayer(spec)
-        return try {
-            LightAudioPlayer(
-                sealedActivity.activity,
-                spec,
-                detachedSessionState::closeHandle,
-            )
-        } catch (error: Throwable) {
-            detachedSessionState.closeHandle()
-            throw error
-        }
+        return newDetachedAudioPlayer(sealedActivity.activity, spec)
     }
 
     /** Create a recorder using [cfg]. Call [LightAudioRecorder.release] when done. */
@@ -83,6 +72,17 @@ value class DefaultLightAudio(
         usage: LightAudioUsage,
         sampleRate: Int
     ): LightAudioVoice = LightAudioVoice(sealedActivity.activity, usage, sampleRate)
+}
+
+internal fun newDetachedAudioPlayer(context: Context, spec: LightPlayerSpec): LightAudioPlayer {
+    context.requireDetachedAudioCapability()
+    admitDetachedPlayer(spec)
+    return try {
+        LightAudioPlayer(context, spec, detachedSessionState::closeHandle)
+    } catch (error: Throwable) {
+        detachedSessionState.closeHandle()
+        throw error
+    }
 }
 
 private fun Context.readAudioCapabilities(): AudioCapabilities {

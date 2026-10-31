@@ -141,7 +141,8 @@ class ManifestGeneratorTest {
 
         assertTrue(xml.contains("""<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />"""))
         assertTrue(xml.contains("""<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />"""))
-        // Neither permission implies hardware, so nothing narrows the install pool.
+        assertTrue(xml.contains("""<uses-permission android:name="android.permission.WAKE_LOCK" />"""))
+        // These permissions do not imply hardware or narrow the install pool.
         assertFalse(xml.contains("uses-feature"))
     }
 

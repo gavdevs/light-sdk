@@ -249,6 +249,22 @@ A live session must be reopened with the same `LightAudioUsage`; requesting a di
 
 For more details on the detached playback design, refer to [Design Decisions - Detached audio](../../docs/design_decisions/detached_audio.md).
 
+##### Service-owned streaming queues
+
+Unrestricted tool integrations can use `LightAudioQueueSessions` when a queue needs asynchronous source resolution. This API accepts an application context. Screen-only tools with resolved URLs or files continue to use `LightAudioPlayer`.
+
+Register one `LightAudioQueueResolver` during application bootstrap, before creating a detached player. `resolve(item)` returns a `LightAudioResolvedSource` with a URL or file and an optional MIME type. `continuation(seed)` can return more queue items. Both callbacks belong to the service lifetime. Implementations must move blocking work to IO and support cancellation.
+
+`LightAudioQueueSessions.start(context, items, startIndex, sourceName, continuousPlayback)` starts a Music session. `control(context, command, positionMs)` sends transport commands. These suspend functions connect a temporary controller and release it after the command. Active playback explicitly starts the foreground service before that controller disconnects.
+
+The `state` flow reports logical items, index, position, duration, playback intent, loading, shuffle, repeat, and errors. It never includes resolved URLs or credentials. Reconnecting clients read this state without replacing the queue. `stop()` clears the existing queue without creating a service.
+
+The SDK resolves sources when selected and rejects stale results after replacement or stop. Pause during resolution prevents autoplay when the source arrives. One source-error recovery attempt resolves the current item again and preserves its position. Decoder/output failures stop the queue.
+
+The media session exposes the logical queue and metadata to system controllers. The SDK includes DASH playback support for resolved manifests. The capability generates wake-lock permission as well as foreground-service permissions. An explicit `WAKE_LOCK` declaration remains valid for tools that already use it.
+
+This queue is not durable storage. An abandoned paused session expires after 60 seconds; service or process destruction clears its queue.
+
 #### PCM voice
 
 `LightAudioVoice` plays short mono signed 16-bit PCM buffers.
