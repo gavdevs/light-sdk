@@ -1,6 +1,7 @@
 package com.thelightphone.sdk.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.compositionLocalOf
@@ -45,5 +46,37 @@ fun Modifier.lightClickable(
         onClickLabel = onClickLabel,
         role = role,
         onClick = onClick,
+    )
+}
+
+/**
+ * Tap and long-press on the same target, without a press indication, matching
+ * [lightClickable]. Long-press fires haptics itself rather than on finger-down,
+ * so a short tap does not buzz twice.
+ */
+fun Modifier.lightTapAndLongPress(
+    enabled: Boolean = true,
+    hapticsEnabled: Boolean = true,
+    onClickLabel: String? = null,
+    onLongClickLabel: String? = null,
+    role: Role? = null,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+): Modifier = composed {
+    val userHapticsEnabled = LocalHapticsEnabled.current
+    val context = LocalContext.current
+    val performHaptic = enabled && hapticsEnabled && userHapticsEnabled
+    combinedClickable(
+        interactionSource = null,
+        indication = null,
+        enabled = enabled,
+        onClickLabel = onClickLabel,
+        onLongClickLabel = onLongClickLabel,
+        role = role,
+        onLongClick = {
+            if (performHaptic) ContextLightVibrator(context).click()
+            onLongPress()
+        },
+        onClick = onTap,
     )
 }
