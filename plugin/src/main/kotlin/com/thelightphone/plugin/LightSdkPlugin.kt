@@ -18,6 +18,17 @@ class LightSdkPlugin : Plugin<Project> {
         val ALLOWED_DEPENDENCIES: Set<String> = readResourceLines("allowed-dependencies.txt").toSet()
         val SDK_VERSION: String = readResourceLines("sdk-version.txt").single()
 
+        /**
+         * Dependencies allowed only at the exact version given, for cases where
+         * the version *is* the security property. A prefix allowlist would
+         * accept 1.20.1 of a library whose verifier was audited at 1.20.0.
+         */
+        val EXACT_ALLOWED_DEPENDENCIES: Set<String> = setOf(
+            "com.auroraoss:gplayapi:3.6.4",
+            "com.google.protobuf:protobuf-java:4.34.1",
+            "com.google.crypto.tink:tink:1.20.0",
+        )
+
         internal fun readResourceLines(name: String): List<String> {
             val stream = LightSdkPlugin::class.java.getResourceAsStream(name)
                 ?: error("Light SDK plugin resource missing: $name")
@@ -26,20 +37,27 @@ class LightSdkPlugin : Plugin<Project> {
             }
         }
 
-        fun isAllowedCoordinate(group: String, name: String): Boolean =
-            // Published SDK artifacts stay valid for composite consumers that
-            // substitute com.thelightphone:* with the adjacent build. The
-            // shared builder allowlist governs what a submitted tool may
-            // declare, so it does not carry these.
-            name in SDK_MODULES && group == "com.thelightphone" ||
+        /**
+         * Whether [group]:[name] may be declared. Pass [version] whenever it is
+         * known: an exact-pinned dependency is allowed *only* at its pinned
+         * version, and is rejected when the version is unknown, so a caller
+         * cannot lose the pin by omitting it.
+         */
+        fun isAllowedCoordinate(group: String, name: String, version: String? = null): Boolean {
+            val coordinate = "$group:$name"
+            val exactPins = EXACT_ALLOWED_DEPENDENCIES.filter { it.startsWith("$coordinate:") }
+            if (exactPins.isNotEmpty()) {
+                return version != null && "$coordinate:$version" in exactPins
+            }
+            return name in SDK_MODULES && group == "com.thelightphone" ||
                 ALLOWED_DEPENDENCIES.any { entry ->
                     if (':' in entry) {
-                        val coordinate = "$group:$name"
                         coordinate == entry || coordinate.startsWith("$entry-")
                     } else {
                         group == entry || group.startsWith("$entry.")
                     }
                 }
+        }
 
         fun isAllowedKspProcessor(group: String, name: String): Boolean =
             "$group:$name" in ALLOWED_KSP_PROCESSORS
@@ -510,7 +528,9 @@ class LightSdkPlugin : Plugin<Project> {
                             violations.add(config.name, "${group}:${dep.name}:${dep.version ?: "?"} (KSP processor not allowed)")
                         }
                     } else {
-                        if (!isAllowedCoordinate(group, dep.name)) {
+                        // The version goes in so an exact-pinned coordinate is
+                        // checked at its pinned version, not merely by name.
+                        if (!isAllowedCoordinate(group, dep.name, dep.version)) {
                             violations.add(config.name, "${group}:${dep.name}:${dep.version ?: "?"}")
                         }
                     }

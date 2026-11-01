@@ -409,6 +409,34 @@ class LightSdkPluginValidationTest {
     }
 
     @Test
+    fun `exact-pinned dependencies are recorded at their audited version`() {
+        // The set is a canary: adding an entry widens what any tool built on
+        // this SDK may resolve, and only at the version named here.
+        assertEquals(
+            setOf(
+                "com.auroraoss:gplayapi:3.6.4",
+                "com.google.protobuf:protobuf-java:4.34.1",
+                "com.google.crypto.tink:tink:1.20.0",
+            ),
+            LightSdkPlugin.EXACT_ALLOWED_DEPENDENCIES,
+        )
+    }
+
+    @Test
+    fun `exact-pinned dependencies are allowed only at their pinned version`() {
+        assertTrue(LightSdkPlugin.isAllowedCoordinate("com.google.crypto.tink", "tink", "1.20.0"))
+        assertTrue(LightSdkPlugin.isAllowedCoordinate("com.auroraoss", "gplayapi", "3.6.4"))
+
+        // A different version has not been audited, so the pin rejects it.
+        assertFalse(LightSdkPlugin.isAllowedCoordinate("com.google.crypto.tink", "tink", "1.20.1"))
+        assertFalse(LightSdkPlugin.isAllowedCoordinate("com.google.crypto.tink", "tink", "1.19.0"))
+
+        // Dropping the version must not quietly lose the pin.
+        assertFalse(LightSdkPlugin.isAllowedCoordinate("com.google.crypto.tink", "tink"))
+        assertFalse(LightSdkPlugin.isAllowedCoordinate("com.auroraoss", "gplayapi"))
+    }
+
+    @Test
     fun `artifact entries match the artifact and dash-suffixed variants only`() {
         assertTrue(LightSdkPlugin.isAllowedCoordinate("org.jetbrains.kotlinx", "kotlinx-coroutines-core"))
         assertTrue(LightSdkPlugin.isAllowedCoordinate("com.squareup.okhttp3", "okhttp"))

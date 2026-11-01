@@ -2,6 +2,7 @@ package com.thelightphone.sdk
 
 import android.content.Context
 import android.os.Bundle
+import com.thelightphone.sdk.install.LightPackageInstaller
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -232,6 +233,8 @@ class SealedLightContext(internal val androidContext: Context) {
     val fileShare: LightFileShare by lazy { LightFileShare(androidContext) }
     val connectivity: LightConnectivity by lazy { LightConnectivity(androidContext) }
     val appAccess: LightAppAccess by lazy { LightAppAccess(androidContext) }
+    /** Present regardless of capability; the installer checks it lazily, like app-access. */
+    val packageInstaller: LightPackageInstaller by lazy { LightPackageInstaller(androidContext) }
     fun readAsset(path: String): ByteArray = androidContext.assets.open(path).use { it.readBytes() }
 }
 /**
