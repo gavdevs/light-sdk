@@ -219,8 +219,16 @@ object LightToolPolicy {
      */
     const val CLEARTEXT_HTTP: String = "cleartext-http"
 
+    /**
+     * Lets a tool enumerate and launch other apps, open app details, and read
+     * the active notification stream. The permissions this needs are
+     * restricted/special-access ones, so the capability owns them instead of
+     * widening [ALLOWED_PERMISSIONS] for every tool.
+     */
+    const val APP_ACCESS: String = "app-access"
+
     val ALLOWED_CAPABILITIES: Set<String> =
-        setOf(DETACHED_AUDIO, AUDIO_DASH, TOOL_MANAGER_PROVIDER, CLEARTEXT_HTTP)
+        setOf(DETACHED_AUDIO, AUDIO_DASH, TOOL_MANAGER_PROVIDER, CLEARTEXT_HTTP, APP_ACCESS)
 
     /** media3 version the SDK is built against, generated from its catalog. */
     val MEDIA3_VERSION: String = LightSdkPlugin.readResourceLines("media3-version.txt").single()
@@ -241,7 +249,25 @@ object LightToolPolicy {
             "android.permission.FOREGROUND_SERVICE",
             "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         ),
+        APP_ACCESS to listOf(
+            "android.permission.REQUEST_DELETE_PACKAGES",
+        ),
     )
+
+    /**
+     * Notifications access needs no requested permission: the platform grants it
+     * from system settings to an enabled listener, and
+     * `BIND_NOTIFICATION_LISTENER_SERVICE` is only a signature-level guard on
+     * the service element, never something a non-system app can be granted.
+     *
+     * Package enumeration likewise requests nothing: the capability emits a
+     * `<queries>` block for launcher activities, which is the scoped mechanism
+     * for seeing exactly the apps a list can launch. Asking for
+     * `QUERY_ALL_PACKAGES` on top of that would be broader than the need and is
+     * a Play policy concern.
+     */
+    const val APP_ACCESS_BIND_PERMISSION: String =
+        "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
 
     /**
      * Application `<meta-data>` key marking [capability] as declared. Under our

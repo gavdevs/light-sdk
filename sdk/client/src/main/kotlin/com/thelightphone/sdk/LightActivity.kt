@@ -231,6 +231,7 @@ class SealedLightContext(internal val androidContext: Context) {
     val filesDir: File by lazy{ androidContext.filesDir }
     val fileShare: LightFileShare by lazy { LightFileShare(androidContext) }
     val connectivity: LightConnectivity by lazy { LightConnectivity(androidContext) }
+    val appAccess: LightAppAccess by lazy { LightAppAccess(androidContext) }
     fun readAsset(path: String): ByteArray = androidContext.assets.open(path).use { it.readBytes() }
 }
 /**

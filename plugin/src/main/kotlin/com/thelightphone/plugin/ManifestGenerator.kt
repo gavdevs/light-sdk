@@ -90,6 +90,34 @@ object ManifestGenerator {
                 """        android:usesCleartextTraffic="true"""",
             )
         )
+
+        // Package visibility for enumeration, plus the generated provider the
+        // client uses to hand the notification listener its scope. The listener
+        // only exists for tools that declared the capability, so a tool that
+        // did not opt in carries no way to read another app's notifications.
+        val appAccess = LightToolPolicy.APP_ACCESS in metadata.capabilities
+        val appAccessQueries = marginBlock(
+            if (!appAccess) emptyList() else listOf(
+                """    <queries>""",
+                """        <intent>""",
+                """            <action android:name="android.intent.action.MAIN" />""",
+                """            <category android:name="android.intent.category.LAUNCHER" />""",
+                """        </intent>""",
+                """    </queries>""",
+            )
+        )
+        val appAccessService = marginBlock(
+            if (!appAccess) emptyList() else listOf(
+                """        <service""",
+                """            android:name="com.thelightphone.sdk.apps.LightAppNotificationListener"""",
+                """            android:exported="false"""",
+                """            android:permission="${LightToolPolicy.APP_ACCESS_BIND_PERMISSION}">""",
+                """            <intent-filter>""",
+                """                <action android:name="android.service.notification.NotificationListenerService" />""",
+                """            </intent-filter>""",
+                """        </service>""",
+            )
+        )
         appendLine(
             """
             |    <application
@@ -120,13 +148,13 @@ object ManifestGenerator {
             |            <meta-data
             |                android:name="com.thelightphone.sdk.SDK_VERSION"
             |                android:value="${'$'}{sdkVersion}" />
-            |        </receiver>$detachedAudioService$toolManagerProvider
+            |        </receiver>$detachedAudioService$toolManagerProvider$appAccessService
             |    </application>
             |    <queries>
             |        <intent>
             |            <action android:name="com.thelightphone.sdk.ACTION_SDK_MARKER" />
             |        </intent>
-            |    </queries>
+            |    </queries>$appAccessQueries
             |</manifest>""".trimMargin()
         )
     }

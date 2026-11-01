@@ -74,6 +74,29 @@ the norm for self-hosted servers on a home network (a NAS, a printer, a
 personal sync server at a `192.168.x` address). Declaring it here keeps the
 opt-out reviewable in `lighttool.toml` rather than hidden in a manifest.
 
+A tool that lists other apps or reads the notification stream uses:
+
+```toml
+[tool]
+capabilities = ["app-access"]
+```
+
+`app-access` emits a `<queries>` block for launcher activities, a
+`NotificationListenerService` guarded by the platform's bind permission, and the
+SDK marker checked by `LightAppAccess`. The APIs arrive on the screen context:
+
+```kotlin
+val apps = lightContext.appAccess.apps          // installed(), launch(), openAppInfo(), ...
+val notifications = lightContext.appAccess.notifications  // isAccessGranted(), active(), dismiss(), ...
+```
+
+It requests only `REQUEST_DELETE_PACKAGES`. Enumeration needs no
+`QUERY_ALL_PACKAGES`: the `<queries>` block is the scoped mechanism and sees
+exactly the apps a list can launch. Reading notifications needs no requested
+permission either — the user grants it from system settings, and
+`NotificationListenerService` access is the platform's to give, not the
+manifest's to ask for.
+
 ### `serverPackage` — the LightOS package your tool connects to
 Must be `com.lightos`. The build fails on any other value unless you pass `-DlightSdk.allowAltServerPackage=true`. To build for the LightOS emulator, see [Building your tool for the emulator](../system_app/README.md#9-building-your-tool-for-the-emulator).
 
