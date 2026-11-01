@@ -36,8 +36,11 @@ abstract class ValidateResolvedDependenciesTask : DefaultTask() {
 
     private fun check(config: String, root: ResolvedComponentResult, violations: DependencyViolations) {
         val isKsp = config.startsWith("ksp")
-        val isAllowed: (String, String) -> Boolean =
-            if (isKsp) LightSdkPlugin::isAllowedKspProcessor else LightSdkPlugin::isAllowedCoordinate
+        // The resolved graph carries concrete versions, so exact-pinned
+        // coordinates are validated against their pin here as at configure time.
+        val isAllowed: (String, String, String?) -> Boolean =
+            if (isKsp) { group, name, _ -> LightSdkPlugin.isAllowedKspProcessor(group, name) }
+            else { group, name, version -> LightSdkPlugin.isAllowedCoordinate(group, name, version) }
 
         // Only trust transitives of allowed module deps — not project deps,
         // since project dep transitives may themselves be substituted.
@@ -51,13 +54,13 @@ abstract class ValidateResolvedDependenciesTask : DefaultTask() {
         }
         firstLevel.forEach { component ->
             val version = component.moduleVersion ?: return@forEach
-            if (isAllowed(version.group, version.name)) collectTransitives(component)
+            if (isAllowed(version.group, version.name, version.version)) collectTransitives(component)
         }
 
         firstLevel.forEach { component ->
             val version = component.moduleVersion ?: return@forEach
             val coordinate = "${version.group}:${version.name}"
-            if (coordinate in allowedTransitives || isAllowed(version.group, version.name)) return@forEach
+            if (coordinate in allowedTransitives || isAllowed(version.group, version.name, version.version)) return@forEach
             val tag = if (isKsp) "unexpected resolved KSP dependency" else "unexpected resolved dependency — possible substitution"
             violations.add(config, "$coordinate:${version.version} ($tag)")
         }
