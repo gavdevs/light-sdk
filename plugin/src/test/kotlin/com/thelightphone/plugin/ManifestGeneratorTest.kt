@@ -193,6 +193,44 @@ class ManifestGeneratorTest {
     }
 
     @Test
+    fun `package install capability generates installer and uninstaller permissions`() {
+        val xml = render(capabilities = listOf("package-install-request"))
+
+        assertTrue(xml.contains("android.permission.REQUEST_INSTALL_PACKAGES"))
+        assertTrue(xml.contains("android.permission.QUERY_ALL_PACKAGES"))
+        assertTrue(xml.contains("android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"))
+        assertTrue(xml.contains("android.permission.REQUEST_DELETE_PACKAGES"))
+    }
+
+    @Test
+    fun `package install capability emits non-exported receivers and marker`() {
+        val xml = render(capabilities = listOf("package-install-request"))
+
+        assertTrue(xml.contains("com.thelightphone.sdk.CAPABILITY_PACKAGE_INSTALL_REQUEST"))
+        listOf("LightPackageInstallReceiver", "LightPackageUninstallReceiver").forEach { receiver ->
+            assertTrue(
+                xml.contains("android:name=\"com.thelightphone.sdk.install.$receiver\""),
+                "expected receiver $receiver; got:\n$xml",
+            )
+        }
+        // Neither receiver is exported: install confirmation must come through
+        // the tool that asked for it.
+        assertFalse(
+            Regex("sdk\\.install\\.LightPackage(Install|Uninstall)Receiver\"[^>]*exported=\"true\"")
+                .containsMatchIn(xml),
+        )
+    }
+
+    @Test
+    fun `package install components are omitted without capability`() {
+        val xml = render()
+
+        assertFalse(xml.contains("LightPackageInstallReceiver"))
+        assertFalse(xml.contains("LightPackageUninstallReceiver"))
+        assertFalse(xml.contains("REQUEST_INSTALL_PACKAGES"))
+    }
+
+    @Test
     fun `tool-manager-provider capability declares the LightFileProvider marker`() {
         val xml = render(capabilities = listOf("tool-manager-provider"))
 

@@ -227,8 +227,21 @@ object LightToolPolicy {
      */
     const val APP_ACCESS: String = "app-access"
 
-    val ALLOWED_CAPABILITIES: Set<String> =
-        setOf(DETACHED_AUDIO, AUDIO_DASH, TOOL_MANAGER_PROVIDER, CLEARTEXT_HTTP, APP_ACCESS)
+    /**
+     * Lets a tool install and uninstall packages with the user's confirmation.
+     * The receiver here receives the platform's install session result; the
+     * screens themselves live in `com.thelightphone.sdk.install`.
+     */
+    const val PACKAGE_INSTALL_REQUEST: String = "package-install-request"
+
+    val ALLOWED_CAPABILITIES: Set<String> = setOf(
+        DETACHED_AUDIO,
+        AUDIO_DASH,
+        TOOL_MANAGER_PROVIDER,
+        CLEARTEXT_HTTP,
+        APP_ACCESS,
+        PACKAGE_INSTALL_REQUEST,
+    )
 
     /** media3 version the SDK is built against, generated from its catalog. */
     val MEDIA3_VERSION: String = LightSdkPlugin.readResourceLines("media3-version.txt").single()
@@ -250,6 +263,19 @@ object LightToolPolicy {
             "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         ),
         APP_ACCESS to listOf(
+            "android.permission.REQUEST_DELETE_PACKAGES",
+        ),
+        // Installing is a different grant from deleting, so it is a separate
+        // capability: a tool that only needs uninstall should not be able to
+        // install. QUERY_ALL_PACKAGES comes with install because the installer
+        // must resolve the package it is about to replace.
+        PACKAGE_INSTALL_REQUEST to listOf(
+            "android.permission.REQUEST_INSTALL_PACKAGES",
+            "android.permission.QUERY_ALL_PACKAGES",
+            "android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION",
+            // The install flow also offers uninstall, so the capability carries
+            // the matching delete permission rather than forcing the tool to
+            // declare app-access as well.
             "android.permission.REQUEST_DELETE_PACKAGES",
         ),
     )
