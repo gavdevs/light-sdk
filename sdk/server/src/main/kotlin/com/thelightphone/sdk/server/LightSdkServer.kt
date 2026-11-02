@@ -63,6 +63,14 @@ object LightSdkServer {
      */
     var isSdkVersionSupported: (sdkVersion: String) -> Boolean = { true }
 
+    /**
+     * Replaces cert classification for installed callers when set. Companion
+     * servers whose client is their own dev-signed package need this: nothing
+     * they sign matches the Light certs, so the built-in checks would reject
+     * their own tool. When null, the built-in Light-signing checks apply.
+     */
+    var checkCertOverride: ((callingPackage: String) -> ClientCertType)? = null
+
     fun List<InstalledClient>.filterAllowedInstalledTools(
         settings: LightSdkServerSettings
     ): List<InstalledClient> {
@@ -487,6 +495,7 @@ object LightSdkServer {
     }
 
     fun checkCert(context: Context, callingPackage: String): ClientCertType {
+        checkCertOverride?.let { return it(callingPackage) }
         val info = try {
             context.packageManager.getPackageInfo(
                 callingPackage,
